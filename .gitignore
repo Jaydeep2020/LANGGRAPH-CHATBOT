@@ -1,0 +1,153 @@
+# ==============================
+# Python
+# ==============================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ==============================
+# Environment / Secrets
+# ==============================
+
+.env
+.env.*
+!.env.example
+
+# API keys / credentials
+*.pem
+*.key
+secrets.json
+credentials.json
+
+# ==============================
+# Jupyter Notebook
+# ==============================
+
+.ipynb_checkpoints/
+
+# ==============================
+# IDE / Editors
+# ==============================
+
+.vscode/
+.idea/
+*.iml
+
+# ==============================
+# OS Generated Files
+# ==============================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==============================
+# Logs
+# ==============================
+
+*.log
+logs/
+
+# ==============================
+# Build / Distribution
+# ==============================
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ==============================
+# Testing / Coverage
+# ==============================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ==============================
+# Type Checking
+# ==============================
+
+.mypy_cache/
+.pyre/
+.pytype/
+
+# ==============================
+# Ruff / Linters
+# ==============================
+
+.ruff_cache/
+
+# ==============================
+# LangGraph / LangChain / AI
+# ==============================
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Vector databases
+chroma_db/
+chroma/
+faiss_index/
+faiss_db/
+vectorstore/
+vector_db/
+
+# Local model files
+models/
+*.bin
+*.safetensors
+*.gguf
+*.pt
+*.pth
+
+# ==============================
+# Temporary Files
+# ==============================
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+
+# ==============================
+# Data Files
+# ==============================
+
+# Uncomment if you don't want datasets in Git
+# data/
+# datasets/
+
+# Large files
+*.zip
+*.tar
+*.gz
+*.7z
+
+# ==============================
+# Project Specific
+# ==============================
+
+# Add your local folders here
+# uploads/
+# outputs/
+# generated/
+# cache/
