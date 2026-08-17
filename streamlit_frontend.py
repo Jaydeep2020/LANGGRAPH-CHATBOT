@@ -1,6 +1,6 @@
 import streamlit as st
 from langgraph_backend import chatbot, retrieve_all_threads, delete_thread
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 import uuid  # for Generating Thread ID for different chats
 import time
@@ -166,7 +166,14 @@ if user_input:
     # with st.chat_message('ai'):
     #     st.text(ai_message)
 
-    CONFIG = {'configurable': {'thread_id': st.session_state['thread_id']}}
+    # CONFIG = {'configurable': {'thread_id': st.session_state['thread_id']}}
+
+    # with it we can Trace Thread in Langsmith
+    CONFIG = {
+        "configurable": {"thread_id": st.session_state["thread_id"]},
+        "metadata": {"thread_id": st.session_state["thread_id"]},
+        "run_name": "chat_turn",
+    }
 
     # After Implementing Streaming Feature
     with st.chat_message('assistant'):
@@ -174,25 +181,89 @@ if user_input:
         # we did chatbot.invoke() -> chatbot.stream()
         # chatbot.stream() returns a Generator Object
 
-        message_generator = (
-            message_chunk.content
-            for message_chunk, metadata in chatbot.stream(
-            {'messages': [HumanMessage(content=user_input)]},
-            config=CONFIG,
-            stream_mode='messages'
-        )
-        )
+        # Holds the Streamlit status box
+        status_holder = {"box": None}
 
-        # Controls Streaming Speed
+        # Stores tool names used in this response
+        tool_names = []
+
+
         def slow_generator():
-            for chunk in message_generator:
-                yield chunk
-                time.sleep(0.02)
+
+            for message_chunk, metadata in chatbot.stream(
+                    {'messages': [HumanMessage(content=user_input)]},
+                    config=CONFIG,
+                    stream_mode='messages'
+            ):
+
+                # =====================================================
+                # TOOL CALL
+                # =====================================================
+
+                if isinstance(message_chunk, ToolMessage):
+
+                    tool_name = getattr(
+                        message_chunk,
+                        "name",
+                        "tool"
+                    )
+
+                    # Store tool name
+                    if tool_name not in tool_names:
+                        tool_names.append(tool_name)
+
+                    # Create status box when first tool is called
+                    if status_holder["box"] is None:
+
+                        status_holder["box"] = st.status(
+                            f"🔧 Using `{tool_name}`...",
+                            expanded=True
+                        )
+
+                    # Update existing status box
+                    else:
+
+                        status_holder["box"].update(
+                            label=f"🔧 Using `{tool_name}`...",
+                            state="running",
+                            expanded=True
+                        )
+
+                # =====================================================
+                # AI RESPONSE
+                # =====================================================
+
+                if isinstance(message_chunk, AIMessage):
+
+                    # Stream only AI content
+                    if message_chunk.content:
+                        yield message_chunk.content
+
+                        # Controls Streaming Speed
+                        time.sleep(0.02)
+
 
         # st.write_stream takes Generator as Input
         ai_message = st.write_stream(slow_generator())
 
+        # =====================================================
+        # TOOL FINISHED
+        # =====================================================
+
+        if status_holder["box"] is not None:
+            # Show which tool was actually used
+            tools_used = ", ".join(
+                f"`{tool}`" for tool in tool_names
+            )
+
+            status_holder["box"].update(
+                label=f"✅ Used {tools_used}",
+                state="complete",
+                expanded=False
+            )
+
+        # Save assistant message
         st.session_state['message_history'].append({
-            'role': 'ai',
+            'role': 'assistant',
             'content': ai_message
         })
