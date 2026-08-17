@@ -1,5 +1,5 @@
 import streamlit as st
-from langgraph_backend import chatbot, retrieve_all_threads
+from langgraph_backend import chatbot, retrieve_all_threads, delete_thread
 from langchain_core.messages import HumanMessage
 
 import uuid  # for Generating Thread ID for different chats
@@ -67,21 +67,73 @@ for thread_id in st.session_state['chat_threads'][::-1]:
             chat_title = message.content[:30]
             break
 
-    if st.sidebar.button(chat_title, key=str(thread_id)):
-        st.session_state['thread_id'] = thread_id
+    # =========================================================
+    # ONE ROW FOR EACH CHAT
+    # =========================================================
 
+    chat_row = st.sidebar.container()
 
-        temp_messages = []
+    with chat_row:
 
-        for message in messages:
-            if isinstance(message, HumanMessage):
-                role='user'
-            else:
-                role='assistant'
+        col1, col2 = st.columns([5, 1], vertical_alignment="center")
 
-            temp_messages.append({'role': role, 'content' : message.content})
+        # -----------------------------------------------------
+        # Chat button
+        # -----------------------------------------------------
 
-        st.session_state['message_history'] = temp_messages
+        with col1:
+
+            if st.button(
+                chat_title,
+                key=f"chat_{thread_id}",
+                use_container_width=True
+            ):
+
+                st.session_state['thread_id'] = thread_id
+
+                temp_messages = []
+
+                for message in messages:
+
+                    if isinstance(message, HumanMessage):
+                        role = 'user'
+                    else:
+                        role = 'assistant'
+
+                    temp_messages.append({
+                        'role': role,
+                        'content': message.content
+                    })
+
+                st.session_state['message_history'] = temp_messages
+
+                st.rerun()
+
+        # -----------------------------------------------------
+        # Delete button
+        # -----------------------------------------------------
+
+        with col2:
+
+            if st.button(
+                "🗑️",
+                key=f"delete_{thread_id}",
+                help="Delete chat"
+            ):
+
+                # Delete from SQLite
+                delete_thread(thread_id)
+
+                # Remove from Streamlit session
+                st.session_state['chat_threads'].remove(thread_id)
+
+                # If currently opened chat was deleted
+                if st.session_state['thread_id'] == thread_id:
+
+                    st.session_state['thread_id'] = generate_thread_id()
+                    st.session_state['message_history'] = []
+
+                st.rerun()
 
 
 

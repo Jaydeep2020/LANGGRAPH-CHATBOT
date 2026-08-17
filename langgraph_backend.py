@@ -58,3 +58,7 @@ def retrieve_all_threads():
         all_threads.add(checkpoint.config['configurable']['thread_id'])
 
     return list(all_threads)
+
+# Delete chat history with thread ID
+def delete_thread(thread_id):
+    checkpointer.delete_thread(thread_id)
