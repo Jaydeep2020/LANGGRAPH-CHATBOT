@@ -1,5 +1,5 @@
 import streamlit as st
-from langgraph_backend import chatbot
+from langgraph_backend import chatbot, retrieve_all_threads
 from langchain_core.messages import HumanMessage
 
 import uuid  # for Generating Thread ID for different chats
@@ -40,7 +40,7 @@ if 'thread_id' not in st.session_state:
     st.session_state['thread_id'] = generate_thread_id()
 
 if 'chat_threads' not in st.session_state:
-    st.session_state['chat_threads'] = []
+    st.session_state['chat_threads'] = retrieve_all_threads()
 
 add_thread(st.session_state['thread_id'])
 
@@ -59,7 +59,7 @@ for thread_id in st.session_state['chat_threads'][::-1]:
     messages = load_conversation(thread_id)
 
     # Default title
-    chat_title = "Past Conversation"
+    chat_title = "New Conversation"
 
     # Find first user message
     for message in messages:
