@@ -1,0 +1,11 @@
+langgraph
+langchain
+langchain-openai
+langchain-community
+langchain-core
+langchain-text-splitters
+faiss-cpu
+pypdf
+streamlit
+python-dotenv
+requests

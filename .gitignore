@@ -112,6 +112,12 @@ vector_db/
 
 faiss_indexes/
 
+chatbot.db-shm
+chatbot.db-wal
+chatbot.db
+
+main.py
+
 # Local model files
 models/
 *.bin
