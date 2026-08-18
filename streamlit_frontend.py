@@ -1,5 +1,5 @@
 import streamlit as st
-from langgraph_backend import chatbot, retrieve_all_threads, delete_thread
+from langgraph_backend import chatbot, retrieve_all_threads, delete_thread, ingest_pdf, thread_document_metadata
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 import uuid  # for Generating Thread ID for different chats
@@ -10,7 +10,7 @@ import time
 
 def generate_thread_id():
     thread_id = uuid.uuid4()
-    return thread_id
+    return str(thread_id)
 
 def reset_chat():
     thread_id = generate_thread_id()
@@ -33,28 +33,90 @@ def load_conversation(thread_id):
 
 # Use Streamlit st.session_state - it maintain state after every reRun, it only erases state after hard refresh or program close.
 # st.session_state -> is Dictionary only
-if 'message_history' not in st.session_state:
-    st.session_state['message_history'] = []
+# if 'message_history' not in st.session_state:
+#     st.session_state['message_history'] = []
+#
+# if 'thread_id' not in st.session_state:
+#     st.session_state['thread_id'] = generate_thread_id()
+#
+# if 'chat_threads' not in st.session_state:
+#     st.session_state['chat_threads'] = retrieve_all_threads()
 
-if 'thread_id' not in st.session_state:
-    st.session_state['thread_id'] = generate_thread_id()
+def messages_to_ui(messages):
+    """Convert LangChain messages to UI-friendly dicts."""
+    result = []
+    for message in messages:
+        if isinstance(message, HumanMessage):
+            role = "user"
+        else:
+            role = "assistant"
+        result.append({"role": role, "content": message.content})
+    return result
 
+# Initialize chat_threads first
 if 'chat_threads' not in st.session_state:
     st.session_state['chat_threads'] = retrieve_all_threads()
 
+# Initialize thread_id
+if 'thread_id' not in st.session_state:
+    # Always start with a new chat on a fresh session
+    st.session_state['thread_id'] = generate_thread_id()
+    st.session_state['message_history'] = []
+elif 'message_history' not in st.session_state:
+    # Fallback in case thread_id exists but message_history is missing
+    st.session_state['message_history'] = []
+
+# Initialize message_history from the selected thread
+if 'message_history' not in st.session_state:
+    messages = load_conversation(st.session_state['thread_id'])
+    st.session_state['message_history'] = messages_to_ui(messages)
+
+
+if "ingested_docs" not in st.session_state:
+    st.session_state["ingested_docs"] = {}
+
 add_thread(st.session_state['thread_id'])
 
+thread_key = str(st.session_state["thread_id"])
+thread_docs = st.session_state["ingested_docs"].setdefault(thread_key, {})
+threads = st.session_state["chat_threads"][::-1]
+selected_thread = None
 
 # ***************************************************** SideBar UI *****************************************************
 
 st.sidebar.title('LangGraph Chatbot')
 
-if st.sidebar.button('New Chat'):
+if st.sidebar.button("New Chat", use_container_width=True):
     reset_chat()
+    st.rerun()
+
+if thread_docs:
+    latest_doc = list(thread_docs.values())[-1]
+    st.sidebar.success(
+        f"Using `{latest_doc.get('filename')}` "
+        f"({latest_doc.get('chunks')} chunks from {latest_doc.get('documents')} pages)"
+    )
+else:
+    st.sidebar.info("No PDF indexed yet.")
+
+uploaded_pdf = st.sidebar.file_uploader("Upload a PDF for this chat", type=["pdf"])
+if uploaded_pdf:
+    if uploaded_pdf.name in thread_docs:
+        st.sidebar.info(f"`{uploaded_pdf.name}` already processed for this chat.")
+    else:
+        with st.sidebar.status("Indexing PDF…", expanded=True) as status_box:
+            summary = ingest_pdf(
+                uploaded_pdf.getvalue(),
+                thread_id=thread_key,
+                filename=uploaded_pdf.name,
+            )
+            thread_docs[uploaded_pdf.name] = summary
+            status_box.update(label="✅ PDF indexed", state="complete", expanded=False)
+
 
 st.sidebar.header('My Conversations')
 
-for thread_id in st.session_state['chat_threads'][::-1]:
+for thread_id in st.session_state['chat_threads']:
 
     messages = load_conversation(thread_id)
 
@@ -170,8 +232,8 @@ if user_input:
 
     # with it we can Trace Thread in Langsmith
     CONFIG = {
-        "configurable": {"thread_id": st.session_state["thread_id"]},
-        "metadata": {"thread_id": st.session_state["thread_id"]},
+        "configurable": {"thread_id": str(st.session_state["thread_id"])},
+        "metadata": {"thread_id": str(st.session_state["thread_id"])},
         "run_name": "chat_turn",
     }
 

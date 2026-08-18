@@ -110,6 +110,8 @@ faiss_db/
 vectorstore/
 vector_db/
 
+faiss_indexes/
+
 # Local model files
 models/
 *.bin
